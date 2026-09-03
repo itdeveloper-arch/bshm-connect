@@ -86,6 +86,10 @@ alter table public.staff_profiles add constraint staff_profiles_role_check
 
 alter table public.staff_profiles enable row level security;
 
+drop policy if exists "staff can read concerns" on public.concerns;
+create policy "staff can read concerns" on public.concerns
+for select to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+
 drop policy if exists "staff can read own profile" on public.staff_profiles;
 create policy "staff can read own profile" on public.staff_profiles
 for select to authenticated using (auth.uid() = user_id);
