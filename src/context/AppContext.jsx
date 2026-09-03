@@ -79,9 +79,15 @@ function toDatabaseRow(table, value) {
   return value;
 }
 
-async function saveToCloud(table, value) {
+async function saveToCloud(table, value, operation = "upsert") {
   try {
-    const { error } = await supabase.from(table).upsert(toDatabaseRow(table, value));
+    const row = toDatabaseRow(table, value);
+    const request = operation === "insert"
+      ? supabase.from(table).insert(row)
+      : operation === "update"
+        ? supabase.from(table).update(row).eq("id", value.id)
+        : supabase.from(table).upsert(row);
+    const { error } = await request;
     return error || null;
   } catch (error) {
     return error;
@@ -210,7 +216,7 @@ export function AppProvider({ children }) {
 
   const addConcern = useCallback(async (concern) => {
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("concerns", concern);
+      const error = await saveToCloud("concerns", concern, "insert");
       if (error) return error;
     }
     setConcerns((prev) => {
@@ -226,7 +232,7 @@ export function AppProvider({ children }) {
     if (!updatedConcern) return new Error("Concern not found");
     const updated = { ...updatedConcern, status };
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("concerns", updated);
+      const error = await saveToCloud("concerns", updated, "update");
       if (error) return error;
     }
     setConcerns((prev) => {
@@ -239,7 +245,7 @@ export function AppProvider({ children }) {
 
   const addAnnouncement = useCallback(async (ann) => {
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("announcements", ann);
+      const error = await saveToCloud("announcements", ann, "insert");
       if (error) return error;
     }
     setAnnouncements((prev) => {
@@ -252,7 +258,7 @@ export function AppProvider({ children }) {
 
   const updateAnnouncement = useCallback(async (updated) => {
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("announcements", updated);
+      const error = await saveToCloud("announcements", updated, "update");
       if (error) return error;
     }
     setAnnouncements((prev) => {
@@ -278,7 +284,7 @@ export function AppProvider({ children }) {
 
   const addEvent = useCallback(async (event) => {
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("events", event);
+      const error = await saveToCloud("events", event, "insert");
       if (error) return error;
     }
     setEvents((prev) => {
@@ -291,7 +297,7 @@ export function AppProvider({ children }) {
 
   const updateEvent = useCallback(async (updated) => {
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("events", updated);
+      const error = await saveToCloud("events", updated, "update");
       if (error) return error;
     }
     setEvents((prev) => {
@@ -317,7 +323,7 @@ export function AppProvider({ children }) {
 
   const addOfficer = useCallback(async (newOfficer) => {
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("officers", newOfficer);
+      const error = await saveToCloud("officers", newOfficer, "insert");
       if (error) return error;
     }
     setOfficers((prev) => {
@@ -330,7 +336,7 @@ export function AppProvider({ children }) {
 
   const updateOfficer = useCallback(async (updatedOfficer) => {
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("officers", updatedOfficer);
+      const error = await saveToCloud("officers", updatedOfficer, "update");
       if (error) return error;
     }
     setOfficers((prev) => {
@@ -385,7 +391,7 @@ export function AppProvider({ children }) {
   /* MILESTONE METHODS */
   const addMilestone = useCallback(async (newMilestone) => {
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("milestones", newMilestone);
+      const error = await saveToCloud("milestones", newMilestone, "insert");
       if (error) return error;
     }
     setMilestones((prev) => {
@@ -398,7 +404,7 @@ export function AppProvider({ children }) {
 
   const updateMilestone = useCallback(async (updated) => {
     if (isSupabaseConfigured) {
-      const error = await saveToCloud("milestones", updated);
+      const error = await saveToCloud("milestones", updated, "update");
       if (error) return error;
     }
     setMilestones((prev) => {

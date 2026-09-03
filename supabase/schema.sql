@@ -76,9 +76,13 @@ create policy "public can submit concerns" on public.concerns for insert with ch
 
 create table if not exists public.staff_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  role text not null check (role in ('BSHM Officer', 'Department Adviser')),
+  role text not null check (role in ('Operator', 'BSHM Officer', 'Department Adviser')),
   created_at timestamptz not null default now()
 );
+
+alter table public.staff_profiles drop constraint if exists staff_profiles_role_check;
+alter table public.staff_profiles add constraint staff_profiles_role_check
+  check (role in ('Operator', 'BSHM Officer', 'Department Adviser'));
 
 alter table public.staff_profiles enable row level security;
 
