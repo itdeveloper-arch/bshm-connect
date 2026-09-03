@@ -86,9 +86,24 @@ alter table public.staff_profiles add constraint staff_profiles_role_check
 
 alter table public.staff_profiles enable row level security;
 
+create or replace function public.is_staff_member()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.staff_profiles where user_id = auth.uid()
+  );
+$$;
+
+revoke all on function public.is_staff_member() from public;
+grant execute on function public.is_staff_member() to authenticated;
+
 drop policy if exists "staff can read concerns" on public.concerns;
 create policy "staff can read concerns" on public.concerns
-for select to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for select to authenticated using (public.is_staff_member());
 
 drop policy if exists "staff can read own profile" on public.staff_profiles;
 create policy "staff can read own profile" on public.staff_profiles
@@ -96,57 +111,57 @@ for select to authenticated using (auth.uid() = user_id);
 
 drop policy if exists "staff can create announcements" on public.announcements;
 create policy "staff can create announcements" on public.announcements
-for insert to authenticated with check (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for insert to authenticated with check (public.is_staff_member());
 
 drop policy if exists "staff can update announcements" on public.announcements;
 create policy "staff can update announcements" on public.announcements
-for update to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()))
-with check (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for update to authenticated using (public.is_staff_member())
+with check (public.is_staff_member());
 
 drop policy if exists "staff can delete announcements" on public.announcements;
 create policy "staff can delete announcements" on public.announcements
-for delete to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for delete to authenticated using (public.is_staff_member());
 
 drop policy if exists "staff can create events" on public.events;
 create policy "staff can create events" on public.events
-for insert to authenticated with check (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for insert to authenticated with check (public.is_staff_member());
 
 drop policy if exists "staff can update events" on public.events;
 create policy "staff can update events" on public.events
-for update to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()))
-with check (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for update to authenticated using (public.is_staff_member())
+with check (public.is_staff_member());
 
 drop policy if exists "staff can delete events" on public.events;
 create policy "staff can delete events" on public.events
-for delete to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for delete to authenticated using (public.is_staff_member());
 
 drop policy if exists "staff can create milestones" on public.milestones;
 create policy "staff can create milestones" on public.milestones
-for insert to authenticated with check (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for insert to authenticated with check (public.is_staff_member());
 
 drop policy if exists "staff can update milestones" on public.milestones;
 create policy "staff can update milestones" on public.milestones
-for update to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()))
-with check (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for update to authenticated using (public.is_staff_member())
+with check (public.is_staff_member());
 
 drop policy if exists "staff can delete milestones" on public.milestones;
 create policy "staff can delete milestones" on public.milestones
-for delete to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for delete to authenticated using (public.is_staff_member());
 
 drop policy if exists "staff can create officers" on public.officers;
 create policy "staff can create officers" on public.officers
-for insert to authenticated with check (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for insert to authenticated with check (public.is_staff_member());
 
 drop policy if exists "staff can update officers" on public.officers;
 create policy "staff can update officers" on public.officers
-for update to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()))
-with check (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for update to authenticated using (public.is_staff_member())
+with check (public.is_staff_member());
 
 drop policy if exists "staff can delete officers" on public.officers;
 create policy "staff can delete officers" on public.officers
-for delete to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for delete to authenticated using (public.is_staff_member());
 
 drop policy if exists "staff can update concerns" on public.concerns;
 create policy "staff can update concerns" on public.concerns
-for update to authenticated using (exists (select 1 from public.staff_profiles where user_id = auth.uid()))
-with check (exists (select 1 from public.staff_profiles where user_id = auth.uid()));
+for update to authenticated using (public.is_staff_member())
+with check (public.is_staff_member());
