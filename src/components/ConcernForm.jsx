@@ -9,7 +9,7 @@ export default function ConcernForm() {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!subject.trim() || !message.trim()) {
       showToast("Please complete all required fields.");
@@ -24,7 +24,11 @@ export default function ConcernForm() {
       status: "Received",
       date: new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }),
     };
-    addConcern(concern);
+    const error = await addConcern(concern);
+    if (error) {
+      showToast("Concern could not be submitted. Please try again.");
+      return;
+    }
     setName(""); setSubject(""); setMessage(""); setAnonymous(false);
     showToast("Concern submitted successfully!");
     setTimeout(() => alert(`Your concern has been submitted successfully.\n\nReference Number: ${concern.id}\n\nPlease save this reference number.`), 100);

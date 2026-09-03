@@ -23,8 +23,12 @@ export default function ConcernModal({ concern, onClose }) {
 
   const canUpdate = currentRole === "Operator" || currentRole === "BSHM Officer";
 
-  const handleSave = () => {
-    updateConcernStatus(concern.id, status);
+  const handleSave = async () => {
+    const error = await updateConcernStatus(concern.id, status);
+    if (error) {
+      showToast("Concern status could not be updated. Please try again.");
+      return;
+    }
     showToast("Concern status updated successfully.");
     onClose();
   };

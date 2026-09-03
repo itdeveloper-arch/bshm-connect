@@ -138,7 +138,7 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  const handlePublish = (e) => {
+  const handlePublish = async (e) => {
     e.preventDefault();
     if (!annTitle.trim() || !annText.trim()) {
       showToast("Please complete the announcement.");
@@ -150,13 +150,14 @@ export default function Dashboard() {
       text: annText.trim(),
       date: new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }),
     };
-    if (editingAnnouncementId) {
-      updateAnnouncement(announcement);
-      showToast("Announcement updated successfully!");
-    } else {
-      addAnnouncement(announcement);
-      showToast("Announcement published successfully!");
+    const saveError = editingAnnouncementId
+      ? await updateAnnouncement(announcement)
+      : await addAnnouncement(announcement);
+    if (saveError) {
+      showToast("Announcement could not be saved. Please try again.");
+      return;
     }
+    showToast(editingAnnouncementId ? "Announcement updated successfully!" : "Announcement published successfully!");
     setAnnTitle("");
     setAnnText("");
     setEditingAnnouncementId(null);
@@ -168,9 +169,13 @@ export default function Dashboard() {
     setAnnText(announcement.text);
   };
 
-  const handleDeleteAnnouncement = (id) => {
+  const handleDeleteAnnouncement = async (id) => {
     if (!window.confirm("Delete this announcement?")) return;
-    deleteAnnouncement(id);
+    const error = await deleteAnnouncement(id);
+    if (error) {
+      showToast("Announcement could not be deleted. Please try again.");
+      return;
+    }
     if (editingAnnouncementId === id) {
       setEditingAnnouncementId(null);
       setAnnTitle("");
@@ -179,60 +184,73 @@ export default function Dashboard() {
     showToast("Announcement deleted successfully!");
   };
 
-  const handleSaveEvent = (event) => {
-    if (eventModalData === "new") {
-      addEvent(event);
-      showToast("Event added successfully!");
-    } else {
-      updateEvent(event);
-      showToast("Event updated successfully!");
+  const handleSaveEvent = async (event) => {
+    const error = eventModalData === "new" ? await addEvent(event) : await updateEvent(event);
+    if (error) {
+      showToast("Event could not be saved. Please try again.");
+      return;
     }
+    showToast(eventModalData === "new" ? "Event added successfully!" : "Event updated successfully!");
     setEventModalData(null);
   };
 
-  const handleDeleteEvent = (id) => {
-    deleteEvent(id);
+  const handleDeleteEvent = async (id) => {
+    const error = await deleteEvent(id);
+    if (error) {
+      showToast("Event could not be deleted. Please try again.");
+      return;
+    }
     showToast("Event deleted successfully!");
     setEventModalData(null);
   };
 
-  const handleSaveOfficer = (officerData) => {
-    if (officerModalData === "new") {
-      addOfficer(officerData);
-      showToast(`Added ${officerData.name} to Organizational Chart!`);
-    } else {
-      updateOfficer(officerData);
-      showToast(`Updated ${officerData.name} successfully!`);
+  const handleSaveOfficer = async (officerData) => {
+    const error = officerModalData === "new" ? await addOfficer(officerData) : await updateOfficer(officerData);
+    if (error) {
+      showToast("Officer could not be saved. Please try again.");
+      return;
     }
+    showToast(officerModalData === "new" ? `Added ${officerData.name} to Organizational Chart!` : `Updated ${officerData.name} successfully!`);
     setOfficerModalData(null);
   };
 
-  const handleDeleteOfficer = (id) => {
-    deleteOfficer(id);
+  const handleDeleteOfficer = async (id) => {
+    const error = await deleteOfficer(id);
+    if (error) {
+      showToast("Officer could not be removed. Please try again.");
+      return;
+    }
     showToast("Officer removed from Organizational Chart.");
     setOfficerModalData(null);
   };
 
-  const handleResetOfficers = () => {
+  const handleResetOfficers = async () => {
     if (window.confirm("Reset all officers back to the default BSHM Council list?")) {
-      resetOfficers();
+      const error = await resetOfficers();
+      if (error) {
+        showToast("Organizational chart could not be reset. Please try again.");
+        return;
+      }
       showToast("Organizational chart reset to default council.");
     }
   };
 
-  const handleSaveMilestone = (data) => {
-    if (milestoneModalData === "new") {
-      addMilestone(data);
-      showToast(`Milestone "${data.title}" published!`);
-    } else {
-      updateMilestone(data);
-      showToast(`Milestone "${data.title}" updated successfully!`);
+  const handleSaveMilestone = async (data) => {
+    const error = milestoneModalData === "new" ? await addMilestone(data) : await updateMilestone(data);
+    if (error) {
+      showToast("Milestone could not be saved. Please try again.");
+      return;
     }
+    showToast(milestoneModalData === "new" ? `Milestone "${data.title}" published!` : `Milestone "${data.title}" updated successfully!`);
     setMilestoneModalData(null);
   };
 
-  const handleDeleteMilestone = (id) => {
-    deleteMilestone(id);
+  const handleDeleteMilestone = async (id) => {
+    const error = await deleteMilestone(id);
+    if (error) {
+      showToast("Milestone could not be removed. Please try again.");
+      return;
+    }
     showToast("Milestone removed successfully.");
     setMilestoneModalData(null);
   };

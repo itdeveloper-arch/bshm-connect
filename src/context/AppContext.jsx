@@ -109,12 +109,12 @@ export function AppProvider({ children }) {
       return null;
     }
   });
-  const [announcements, setAnnouncements] = useState(() => loadData("bshmAnnouncements", DEFAULT_ANNOUNCEMENTS));
-  const [events, setEvents] = useState(() => loadData("bshmEvents", DEFAULT_EVENTS));
-  const [concerns, setConcerns] = useState(() => loadData("bshmConcerns", []));
-  const [officers, setOfficers] = useState(() => loadData("bshmOfficersList", DEFAULT_OFFICERS));
+  const [announcements, setAnnouncements] = useState(() => isSupabaseConfigured ? [] : loadData("bshmAnnouncements", DEFAULT_ANNOUNCEMENTS));
+  const [events, setEvents] = useState(() => isSupabaseConfigured ? [] : loadData("bshmEvents", DEFAULT_EVENTS));
+  const [concerns, setConcerns] = useState(() => isSupabaseConfigured ? [] : loadData("bshmConcerns", []));
+  const [officers, setOfficers] = useState(() => isSupabaseConfigured ? [] : loadData("bshmOfficersList", DEFAULT_OFFICERS));
   const [officerPhotos, setOfficerPhotos] = useState(() => loadData("bshmOfficerPhotos", {}));
-  const [milestones, setMilestones] = useState(() => loadData("bshmMilestones", DEFAULT_MILESTONES));
+  const [milestones, setMilestones] = useState(() => isSupabaseConfigured ? [] : loadData("bshmMilestones", DEFAULT_MILESTONES));
   const [toast, setToast] = useState({ msg: "", show: false });
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
 
@@ -178,11 +178,11 @@ export function AppProvider({ children }) {
 
       if (cancelled) return;
       const [announcementResult, eventResult, concernResult, officerResult, milestoneResult] = results;
-      if (!announcementResult.error && announcementResult.data?.length) setAnnouncements(announcementResult.data);
-      if (!eventResult.error && eventResult.data?.length) setEvents(eventResult.data);
+      if (!announcementResult.error) setAnnouncements(announcementResult.data || []);
+      if (!eventResult.error) setEvents(eventResult.data || []);
       if (!concernResult.error) setConcerns(concernResult.data || []);
-      if (!officerResult.error && officerResult.data?.length) setOfficers(officerResult.data.map(fromOfficerRow));
-      if (!milestoneResult.error && milestoneResult.data?.length) setMilestones(milestoneResult.data.map(fromMilestoneRow));
+      if (!officerResult.error) setOfficers((officerResult.data || []).map(fromOfficerRow));
+      if (!milestoneResult.error) setMilestones((milestoneResult.data || []).map(fromMilestoneRow));
     };
 
     loadCloudData().catch((error) => console.warn("Supabase load error", error));
@@ -208,119 +208,161 @@ export function AppProvider({ children }) {
     if (isSupabaseConfigured) supabase.auth.signOut().catch((error) => console.warn("Sign out error", error));
   }, []);
 
-  const addConcern = useCallback((concern) => {
+  const addConcern = useCallback(async (concern) => {
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("concerns", concern);
+      if (error) return error;
+    }
     setConcerns((prev) => {
       const next = [concern, ...prev];
-      if (isSupabaseConfigured) saveToCloud("concerns", concern).catch((error) => console.warn("Concern save error", error));
-      else localStorage.setItem("bshmConcerns", JSON.stringify(next));
+      if (!isSupabaseConfigured) localStorage.setItem("bshmConcerns", JSON.stringify(next));
       return next;
     });
+    return null;
   }, []);
 
-  const updateConcernStatus = useCallback((id, status) => {
+  const updateConcernStatus = useCallback(async (id, status) => {
+    const updatedConcern = concerns.find((concern) => concern.id === id);
+    if (!updatedConcern) return new Error("Concern not found");
+    const updated = { ...updatedConcern, status };
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("concerns", updated);
+      if (error) return error;
+    }
     setConcerns((prev) => {
       const next = prev.map((c) => (c.id === id ? { ...c, status } : c));
-      if (isSupabaseConfigured) saveToCloud("concerns", next.find((concern) => concern.id === id)).catch((error) => console.warn("Concern update error", error));
-      else localStorage.setItem("bshmConcerns", JSON.stringify(next));
+      if (!isSupabaseConfigured) localStorage.setItem("bshmConcerns", JSON.stringify(next));
       return next;
     });
-  }, []);
+    return null;
+  }, [concerns]);
 
-  const addAnnouncement = useCallback((ann) => {
+  const addAnnouncement = useCallback(async (ann) => {
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("announcements", ann);
+      if (error) return error;
+    }
     setAnnouncements((prev) => {
       const next = [ann, ...prev];
-      if (isSupabaseConfigured) {
-        saveToCloud("announcements", ann).then((error) => {
-          if (error) {
-            console.warn("Announcement cloud save error", error);
-            saveLocal("bshmAnnouncements", ann);
-          }
-        });
-      } else localStorage.setItem("bshmAnnouncements", JSON.stringify(next));
+      if (!isSupabaseConfigured) localStorage.setItem("bshmAnnouncements", JSON.stringify(next));
       return next;
     });
+    return null;
   }, []);
 
-  const updateAnnouncement = useCallback((updated) => {
+  const updateAnnouncement = useCallback(async (updated) => {
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("announcements", updated);
+      if (error) return error;
+    }
     setAnnouncements((prev) => {
       const next = prev.map((announcement) => (announcement.id === updated.id ? updated : announcement));
-      if (isSupabaseConfigured) saveToCloud("announcements", updated).then((error) => {
-        if (error) console.warn("Announcement update error", error);
-      });
-      else localStorage.setItem("bshmAnnouncements", JSON.stringify(next));
+      if (!isSupabaseConfigured) localStorage.setItem("bshmAnnouncements", JSON.stringify(next));
       return next;
     });
+    return null;
   }, []);
 
-  const deleteAnnouncement = useCallback((id) => {
+  const deleteAnnouncement = useCallback(async (id) => {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from("announcements").delete().eq("id", id);
+      if (error) return error;
+    }
     setAnnouncements((prev) => {
       const next = prev.filter((announcement) => announcement.id !== id);
-      if (isSupabaseConfigured) supabase.from("announcements").delete().eq("id", id).then(({ error }) => {
-        if (error) console.warn("Announcement delete error", error);
-      });
-      else localStorage.setItem("bshmAnnouncements", JSON.stringify(next));
+      if (!isSupabaseConfigured) localStorage.setItem("bshmAnnouncements", JSON.stringify(next));
       return next;
     });
+    return null;
   }, []);
 
-  const addEvent = useCallback((event) => {
+  const addEvent = useCallback(async (event) => {
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("events", event);
+      if (error) return error;
+    }
     setEvents((prev) => {
       const next = [event, ...prev];
-      if (isSupabaseConfigured) saveToCloud("events", event).then((error) => { if (error) console.warn("Event save error", error); });
-      else localStorage.setItem("bshmEvents", JSON.stringify(next));
+      if (!isSupabaseConfigured) localStorage.setItem("bshmEvents", JSON.stringify(next));
       return next;
     });
+    return null;
   }, []);
 
-  const updateEvent = useCallback((updated) => {
+  const updateEvent = useCallback(async (updated) => {
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("events", updated);
+      if (error) return error;
+    }
     setEvents((prev) => {
       const next = prev.map((event) => (event.id === updated.id ? updated : event));
-      if (isSupabaseConfigured) saveToCloud("events", updated).then((error) => { if (error) console.warn("Event update error", error); });
-      else localStorage.setItem("bshmEvents", JSON.stringify(next));
+      if (!isSupabaseConfigured) localStorage.setItem("bshmEvents", JSON.stringify(next));
       return next;
     });
+    return null;
   }, []);
 
-  const deleteEvent = useCallback((id) => {
+  const deleteEvent = useCallback(async (id) => {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from("events").delete().eq("id", id);
+      if (error) return error;
+    }
     setEvents((prev) => {
       const next = prev.filter((event) => event.id !== id);
-      if (isSupabaseConfigured) supabase.from("events").delete().eq("id", id).then(({ error }) => { if (error) console.warn("Event delete error", error); });
-      else localStorage.setItem("bshmEvents", JSON.stringify(next));
+      if (!isSupabaseConfigured) localStorage.setItem("bshmEvents", JSON.stringify(next));
       return next;
     });
+    return null;
   }, []);
 
-  const addOfficer = useCallback((newOfficer) => {
+  const addOfficer = useCallback(async (newOfficer) => {
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("officers", newOfficer);
+      if (error) return error;
+    }
     setOfficers((prev) => {
       const next = [...prev, newOfficer];
-      if (isSupabaseConfigured) saveToCloud("officers", newOfficer).catch((error) => console.warn("Officer save error", error));
-      else try { localStorage.setItem("bshmOfficersList", JSON.stringify(next)); } catch (err) { console.warn("Storage error", err); }
+      if (!isSupabaseConfigured) try { localStorage.setItem("bshmOfficersList", JSON.stringify(next)); } catch (err) { console.warn("Storage error", err); }
       return next;
     });
+    return null;
   }, []);
 
-  const updateOfficer = useCallback((updatedOfficer) => {
+  const updateOfficer = useCallback(async (updatedOfficer) => {
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("officers", updatedOfficer);
+      if (error) return error;
+    }
     setOfficers((prev) => {
       const next = prev.map((o) => (o.id === updatedOfficer.id ? updatedOfficer : o));
-      if (isSupabaseConfigured) saveToCloud("officers", updatedOfficer).catch((error) => console.warn("Officer update error", error));
-      else try { localStorage.setItem("bshmOfficersList", JSON.stringify(next)); } catch (err) { console.warn("Storage error", err); }
+      if (!isSupabaseConfigured) try { localStorage.setItem("bshmOfficersList", JSON.stringify(next)); } catch (err) { console.warn("Storage error", err); }
       return next;
     });
+    return null;
   }, []);
 
-  const deleteOfficer = useCallback((id) => {
+  const deleteOfficer = useCallback(async (id) => {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from("officers").delete().eq("id", id);
+      if (error) return error;
+    }
     setOfficers((prev) => {
       const next = prev.filter((o) => o.id !== id);
-      if (isSupabaseConfigured) supabase.from("officers").delete().eq("id", id).then(({ error }) => { if (error) console.warn("Officer delete error", error); });
-      else try { localStorage.setItem("bshmOfficersList", JSON.stringify(next)); } catch (err) { console.warn("Storage error", err); }
+      if (!isSupabaseConfigured) try { localStorage.setItem("bshmOfficersList", JSON.stringify(next)); } catch (err) { console.warn("Storage error", err); }
       return next;
     });
+    return null;
   }, []);
 
-  const resetOfficers = useCallback(() => {
+  const resetOfficers = useCallback(async () => {
+    if (isSupabaseConfigured) {
+      const errors = await Promise.all(DEFAULT_OFFICERS.map((officer) => saveToCloud("officers", officer)));
+      const error = errors.find(Boolean);
+      if (error) return error;
+    }
     setOfficers(DEFAULT_OFFICERS);
-    if (isSupabaseConfigured) DEFAULT_OFFICERS.forEach((officer) => saveToCloud("officers", officer).catch((error) => console.warn("Officer reset error", error)));
-    else try { localStorage.setItem("bshmOfficersList", JSON.stringify(DEFAULT_OFFICERS)); } catch (err) { console.warn("Storage error", err); }
+    if (!isSupabaseConfigured) try { localStorage.setItem("bshmOfficersList", JSON.stringify(DEFAULT_OFFICERS)); } catch (err) { console.warn("Storage error", err); }
+    return null;
   }, []);
 
   const updateOfficerPhoto = useCallback((officerName, photoDataUrl) => {
@@ -341,31 +383,43 @@ export function AppProvider({ children }) {
   }, []);
 
   /* MILESTONE METHODS */
-  const addMilestone = useCallback((newMilestone) => {
+  const addMilestone = useCallback(async (newMilestone) => {
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("milestones", newMilestone);
+      if (error) return error;
+    }
     setMilestones((prev) => {
       const next = [newMilestone, ...prev];
-      if (isSupabaseConfigured) saveToCloud("milestones", newMilestone).catch((error) => console.warn("Milestone save error", error));
-      else try { localStorage.setItem("bshmMilestones", JSON.stringify(next)); } catch (err) { console.warn("Milestone storage error", err); }
+      if (!isSupabaseConfigured) try { localStorage.setItem("bshmMilestones", JSON.stringify(next)); } catch (err) { console.warn("Milestone storage error", err); }
       return next;
     });
+    return null;
   }, []);
 
-  const updateMilestone = useCallback((updated) => {
+  const updateMilestone = useCallback(async (updated) => {
+    if (isSupabaseConfigured) {
+      const error = await saveToCloud("milestones", updated);
+      if (error) return error;
+    }
     setMilestones((prev) => {
       const next = prev.map((m) => (m.id === updated.id ? updated : m));
-      if (isSupabaseConfigured) saveToCloud("milestones", updated).catch((error) => console.warn("Milestone update error", error));
-      else try { localStorage.setItem("bshmMilestones", JSON.stringify(next)); } catch (err) { console.warn("Milestone storage error", err); }
+      if (!isSupabaseConfigured) try { localStorage.setItem("bshmMilestones", JSON.stringify(next)); } catch (err) { console.warn("Milestone storage error", err); }
       return next;
     });
+    return null;
   }, []);
 
-  const deleteMilestone = useCallback((id) => {
+  const deleteMilestone = useCallback(async (id) => {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from("milestones").delete().eq("id", id);
+      if (error) return error;
+    }
     setMilestones((prev) => {
       const next = prev.filter((m) => m.id !== id);
-      if (isSupabaseConfigured) supabase.from("milestones").delete().eq("id", id).then(({ error }) => { if (error) console.warn("Milestone delete error", error); });
-      else try { localStorage.setItem("bshmMilestones", JSON.stringify(next)); } catch (err) { console.warn("Milestone storage error", err); }
+      if (!isSupabaseConfigured) try { localStorage.setItem("bshmMilestones", JSON.stringify(next)); } catch (err) { console.warn("Milestone storage error", err); }
       return next;
     });
+    return null;
   }, []);
 
   return (
