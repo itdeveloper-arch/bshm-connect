@@ -11,6 +11,9 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaFactor, setMfaFactor] = useState(null);
+  const [mfaChallengeId, setMfaChallengeId] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,10 +46,39 @@ export default function LoginPage() {
     } else {
       sessionStorage.removeItem("bshmLoginAttempts");
       sessionStorage.removeItem("bshmLoginLockedUntil");
-      showToast("Login successful.");
-      navigate("/dashboard");
+      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assurance?.currentLevel !== assurance?.nextLevel) {
+        const { data: factors, error: factorError } = await supabase.auth.mfa.listFactors();
+        const factor = factors?.totp?.find((item) => item.status === "verified");
+        if (factorError || !factor) {
+          showToast("Two-factor authentication is unavailable.");
+        } else {
+          const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
+          if (challengeError) showToast("Unable to start two-factor authentication.");
+          else {
+            setMfaFactor(factor);
+            setMfaChallengeId(challenge.id);
+            showToast("Enter your authenticator code.");
+          }
+        }
+      } else {
+        showToast("Login successful.");
+        navigate("/dashboard");
+      }
     }
     setPassword("");
+  };
+
+  const handleMfaSubmit = async (e) => {
+    e.preventDefault();
+    const { error } = await supabase.auth.mfa.verify({ factorId: mfaFactor.id, challengeId: mfaChallengeId, code: mfaCode.trim() });
+    if (error) {
+      showToast("Invalid authenticator code.");
+      setMfaCode("");
+      return;
+    }
+    showToast("Login successful.");
+    navigate("/dashboard");
   };
 
   return (
@@ -60,7 +92,15 @@ export default function LoginPage() {
         <h2>Staff Portal</h2>
         <p>Authorized BSHM Officer and Department Adviser access.</p>
 
-        <form onSubmit={handleSubmit}>
+        {mfaFactor ? (
+          <form onSubmit={handleMfaSubmit}>
+            <div className="form-group">
+              <label htmlFor="mfa-code" style={{ textAlign: "left" }}>Authenticator code</label>
+              <input id="mfa-code" className="form-control" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" placeholder="Enter 6-digit code" value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} required />
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>Verify and continue</button>
+          </form>
+        ) : <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email" style={{ textAlign: "left" }}>Email</label>
             <input
@@ -90,7 +130,7 @@ export default function LoginPage() {
           <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>
             Login
           </button>
-        </form>
+        </form>}
 
         <button
           className="btn btn-secondary"

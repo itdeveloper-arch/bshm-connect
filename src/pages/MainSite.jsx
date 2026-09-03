@@ -11,6 +11,7 @@ import Footer from "../components/Footer";
 
 export default function MainSite() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isDarkMode] = useState(() => localStorage.getItem("bshmDarkMode") !== "false");
 
   useLayoutEffect(() => {
     const previousScrollRestoration = window.history.scrollRestoration;
@@ -56,7 +57,7 @@ export default function MainSite() {
   }, []);
 
   return (
-    <div id="mainSite" className={isLoading ? "site-is-loading" : "site-is-ready"}>
+    <div id="mainSite" className={`${isLoading ? "site-is-loading" : "site-is-ready"} ${isDarkMode ? "is-dark-mode" : "is-light-mode"}`}>
       {isLoading && (
         <div className="site-loader" role="status" aria-live="polite" aria-label="Loading BSHM Department">
           <div className="site-loader-mark" aria-hidden="true">

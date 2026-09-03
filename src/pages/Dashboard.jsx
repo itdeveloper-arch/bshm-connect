@@ -5,6 +5,7 @@ import ConcernModal from "../components/ConcernModal";
 import OfficerModal from "../components/OfficerModal";
 import MilestoneModal from "../components/MilestoneModal";
 import EventModal from "../components/EventModal";
+import SettingsPanel from "../components/SettingsPanel";
 
 const ROLE_INFO = {
   Operator: {
@@ -93,6 +94,15 @@ export default function Dashboard() {
   const [officerFilter, setOfficerFilter] = useState("");
   const [milestoneFilter, setMilestoneFilter] = useState("");
   const [dashboardSection, setDashboardSection] = useState("overview");
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem("bshmDarkMode") !== "false");
+
+  const toggleDarkMode = () => {
+    setIsDarkMode((current) => {
+      const next = !current;
+      localStorage.setItem("bshmDarkMode", String(next));
+      return next;
+    });
+  };
 
   // Permissions:
   // - Milestones: Both Adviser and Officers (and Operator) can add/modify
@@ -243,7 +253,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="dashboard">
+    <div className={`dashboard ${isDarkMode ? "is-dark-mode" : "is-light-mode"}`}>
       <aside className="dashboard-sidebar">
         <div className="dashboard-sidebar-brand">
           <div className="logo-icon">B</div>
@@ -261,6 +271,7 @@ export default function Dashboard() {
         <span className="sidebar-label sidebar-label-bottom">ACCOUNT</span>
         <div className="dashboard-sidebar-actions">
           <button type="button" onClick={() => navigate("/")}><span>↗</span> View website</button>
+          <button type="button" className={dashboardSection === "settings" ? "active" : ""} onClick={() => setDashboardSection("settings")}><span>⚙</span> Settings</button>
           <button type="button" onClick={handleLogout}><span>↪</span> Sign out</button>
         </div>
       </aside>
@@ -269,14 +280,15 @@ export default function Dashboard() {
           <div className="logo-icon">B</div>
           BSHM <span>Connect</span>
         </div>
-        <div className="dashboard-nav-actions">
-          <button className="btn btn-secondary btn-small" onClick={() => navigate("/")}>
-            <span aria-hidden="true">↗</span> View Website
-          </button>
-          <button className="btn btn-danger btn-small" onClick={handleLogout}>
-            <span aria-hidden="true">↪</span> Logout
-          </button>
-        </div>
+        <button
+          className="theme-toggle"
+          type="button"
+          onClick={toggleDarkMode}
+          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          <span aria-hidden="true">{isDarkMode ? "☀" : "☾"}</span>
+        </button>
       </div>
 
       <main className="dashboard-main" id="dashboard-overview" data-dashboard-section={dashboardSection}>
@@ -356,6 +368,10 @@ export default function Dashboard() {
           <button type="button" onClick={() => setDashboardSection("events")}>Events</button>
           <button type="button" onClick={() => setDashboardSection("concerns")}>Concerns</button>
         </nav>
+
+        <div className={`dashboard-view-panel ${dashboardSection === "settings" ? "dashboard-panel-active" : ""}`} id="dashboard-settings">
+          <SettingsPanel showToast={showToast} />
+        </div>
 
         {/* MILESTONES & ACHIEVEMENTS MANAGEMENT (Adviser, Officer, & Operator) */}
         {canManageMilestones && (
