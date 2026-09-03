@@ -83,11 +83,12 @@ async function saveToCloud(table, value, operation = "upsert") {
   try {
     const row = toDatabaseRow(table, value);
     const request = operation === "insert"
-      ? supabase.from(table).insert(row)
+      ? supabase.from(table).insert(row).select("id").single()
       : operation === "update"
-        ? supabase.from(table).update(row).eq("id", value.id)
-        : supabase.from(table).upsert(row);
-    const { error } = await request;
+        ? supabase.from(table).update(row).eq("id", value.id).select("id").single()
+        : supabase.from(table).upsert(row).select("id").single();
+    const { data, error } = await request;
+    if (!error && !data) return new Error(`Supabase did not save ${table} record`);
     return error || null;
   } catch (error) {
     return error;
@@ -271,7 +272,8 @@ export function AppProvider({ children }) {
 
   const deleteAnnouncement = useCallback(async (id) => {
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from("announcements").delete().eq("id", id);
+      const { data, error } = await supabase.from("announcements").delete().eq("id", id).select("id").single();
+      if (!error && !data) return new Error("Supabase did not delete announcement");
       if (error) return error;
     }
     setAnnouncements((prev) => {
@@ -310,7 +312,8 @@ export function AppProvider({ children }) {
 
   const deleteEvent = useCallback(async (id) => {
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from("events").delete().eq("id", id);
+      const { data, error } = await supabase.from("events").delete().eq("id", id).select("id").single();
+      if (!error && !data) return new Error("Supabase did not delete event");
       if (error) return error;
     }
     setEvents((prev) => {
@@ -349,7 +352,8 @@ export function AppProvider({ children }) {
 
   const deleteOfficer = useCallback(async (id) => {
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from("officers").delete().eq("id", id);
+      const { data, error } = await supabase.from("officers").delete().eq("id", id).select("id").single();
+      if (!error && !data) return new Error("Supabase did not delete officer");
       if (error) return error;
     }
     setOfficers((prev) => {
@@ -417,7 +421,8 @@ export function AppProvider({ children }) {
 
   const deleteMilestone = useCallback(async (id) => {
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from("milestones").delete().eq("id", id);
+      const { data, error } = await supabase.from("milestones").delete().eq("id", id).select("id").single();
+      if (!error && !data) return new Error("Supabase did not delete milestone");
       if (error) return error;
     }
     setMilestones((prev) => {
