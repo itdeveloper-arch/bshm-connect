@@ -83,12 +83,12 @@ async function saveToCloud(table, value, operation = "upsert") {
   try {
     const row = toDatabaseRow(table, value);
     const request = operation === "insert"
-      ? supabase.from(table).insert(row).select("id").single()
+      ? supabase.from(table).insert(row)
       : operation === "update"
         ? supabase.from(table).update(row).eq("id", value.id).select("id").single()
         : supabase.from(table).upsert(row).select("id").single();
     const { data, error } = await request;
-    if (!error && !data) return new Error(`Supabase did not save ${table} record`);
+    if (!error && operation !== "insert" && !data) return new Error(`Supabase did not save ${table} record`);
     return error || null;
   } catch (error) {
     return error;
