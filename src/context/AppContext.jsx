@@ -366,6 +366,15 @@ export function AppProvider({ children }) {
 
   const resetOfficers = useCallback(async () => {
     if (isSupabaseConfigured) {
+      const { data: existingOfficers, error: loadError } = await supabase.from("officers").select("id");
+      if (loadError) return loadError;
+      const defaultIds = new Set(DEFAULT_OFFICERS.map((officer) => officer.id));
+      const customIds = (existingOfficers || []).map((officer) => officer.id).filter((id) => !defaultIds.has(id));
+      const deleteResults = await Promise.all(
+        customIds.map((id) => supabase.from("officers").delete().eq("id", id))
+      );
+      const deleteError = deleteResults.map((result) => result.error).find(Boolean);
+      if (deleteError) return deleteError;
       const errors = await Promise.all(DEFAULT_OFFICERS.map((officer) => saveToCloud("officers", officer)));
       const error = errors.find(Boolean);
       if (error) return error;
